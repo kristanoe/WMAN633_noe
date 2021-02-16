@@ -1,0 +1,174 @@
+---
+title: "Homework 2"
+author: "Krista Noe"
+date: "2/15/2021"
+output: html_document
+---
+
+This homework is all about verifying output of a fitted linear model. We will use the same beach dataset
+from last homework. As before, start by fitting a model with OpenBeach as the response, and include an
+interaction between Year and BeachID.
+```{r}
+beach <- read.csv("beach.csv")
+fit <- lm(OpenBeach ~ Year * BeachID, data = beach) 
+```
+
+<br>
+
+1. Calculate the residuals. Use the summary() function applied to your numeric vector of residuals to
+verify that this matches the Residuals: quantiles reported from the summary of your fitted model.
+Plot a histogram of your residuals. Do they appear reasonably Gaussian? (we will go into detail on
+formal model checking later in the semester) (5 points)
+
+
+```{r}
+# Expected Values
+exp <- fitted.values(fit)
+
+# Observed Values
+obs <- beach$OpenBeach
+
+# Residuals
+residuals <- obs - exp
+
+# Histogram of the residuals
+hist(residuals)
+
+# Does it match?... Yes, it does! 
+summary(fit)
+summary(residuals)
+
+```
+The histogram seems to follow a Gaussian distribution; however, there is a spike in the right tail which could indicate that it is not normal. This being said, the spike appears small enough for these residuals to reasonably follow a normal distribution. 
+
+<br> 
+
+2. Calculate test statistics for your regression coefficients. Verify by comparing to test statistics reported
+from model output. (5 points)
+```{r}
+
+# YEAR
+b_1 <- coef(fit)[2] # estimate
+s_b <- summary(fit)[['coefficients']]['Year', 'Std. Error'] #standard error
+B_1 <- 0 # null hypothesis
+
+t <- (b_1 - B_1) / s_b # test statistic
+t ## yes, it matches!
+
+############################
+
+# BEACHIDB
+b_2 <- coef(fit)[3] #estimate
+s_b2 <- summary(fit)[['coefficients']]['BeachIDB', 'Std. Error'] # standard error
+B_2 <- 0 # null
+
+t2 <- (b_2 - B_2) / s_b2 # test statistic
+t2 
+
+#########################
+
+# BEACHIDC
+b_3 <- coef(fit)[4] # estimate
+s_b3 <- summary(fit)[['coefficients']]['BeachIDC', 'Std. Error'] # standard error
+B_3 <- 0 # null
+
+t3 <- (b_3 - B_3) / s_b3 #test statistic
+t3 
+
+#########################
+
+# YEAR:BEACHIDB 
+b_4 <- coef(fit)[5] #estimate 
+s_b4 <- summary(fit)[['coefficients']]['Year:BeachIDB', 'Std. Error'] # standard error
+B_4 <- 0 # null
+
+t4 <- (b_4 - B_4) / s_b4 # test statistic
+t4 
+
+#########################
+
+# YEAR:BEACHIDC
+b_5 <- coef(fit)[6] # estimate
+s_b5 <- summary(fit)[['coefficients']]['Year:BeachIDC', 'Std. Error'] # standard error
+B_5 <- 0 #null 
+
+t5 <- (b_5 - B_5) / s_b5 # test statistic
+t5
+
+###########################
+# special one for intercept:
+
+ts_i <- coef(fit)[1] /
+summary(fit)[['coefficients']]['(Intercept)', 'Std. Error']
+ts_i
+
+##########################
+
+```
+Everything matches!
+
+<br>
+
+3. Calculate p-values for your regression coefficients. Verify by comparing to p-values reported from model
+output. What are the associated null hypotheses? Do you reject or fail to reject these null hypotheses?
+Note: in the lecture slides I reported test statistics are t-distributed with n − 2 degrees of freedom.
+More generally, these test statistics are t-distributed with n − k degrees of freedom, where k is the
+number of regression coefficients in your linear model. (5 points)
+```{r}
+p <- 2 * (pt(-1 * abs(t), df = 56)) # Reject the null 
+p2 <- 2 * (pt(-1 * abs(t2), df = 56)) # Reject the null
+p3 <- 2 * (pt(-1 * abs(t3), df = 56)) # Reject the null
+p4 <- 2 * (pt(-1 * abs(t4), df = 56)) # Reject the null
+p5 <- 2 * (pt(-1 * abs(t5), df = 56)) # Reject the null
+p6 <- 2 * (pt(-1 * abs(ts_i), df = 56)) # Reject the null
+
+# VERIFY THAT THEY MATCH
+summary(fit)[['coefficients']][1, 4] # NULL: At year 0, there is 0 acres of open beach at Beach A.
+summary(fit)[['coefficients']][2, 4] # NULL: Open area of beach A decreases by 0 hectares per year.
+summary(fit)[['coefficients']][3, 4] # NULL: The area of beach B differs from beach A by 0.
+summary(fit)[['coefficients']][4, 4] # NULL: The area of beach B differs from beach A by 0.
+summary(fit)[['coefficients']][5, 4] # NULL: The rate of change for Beach B differs from Beach A by 0.
+summary(fit)[['coefficients']][6, 4] # NULL: The rate of change for Beach C differs from Beach A by 0.
+
+
+```
+You reject all of the null hypotheses due to the fact that the p-value is <0.05.
+
+<br>
+
+
+4. Select a single regression coefficient (your choice) and devise a null hypothesis that is different from
+the default in lm(). Report the test statistics, your p-value, and whether you reject or fail to reject
+your null hypothesis. (5 points)
+```{r}
+
+# New null: The area of beach C differs from beach A by 100. 
+
+b_3 <- coef(fit)[4] #estimate
+s_b3 <- summary(fit)[['coefficients']]['BeachIDC', 'Std. Error'] # standard error 
+B_3 <- 100 # null 
+ 
+t3 <- (b_3 - B_3) / s_b3 # test statistic
+t3 
+
+p3 <- 2 * (pt(-1 * abs(t3), df = 56)) # p value
+p3
+
+# Reject the null; therefore beach area of beach c differs from beach a by something other than 100. 
+
+```
+
+<br>
+
+5. Interpret output of your fitted model. Tell me how beach area does (or does not change) through time
+at each of the 3 beaches.
+<br>
+
+At beach A, the open area of beach does not stay the same as the years go on. Also, because of the low p-value, we can reject that there was 0 hectares of open beach at year 0. (This means beach a had to have had <0 hecateres of open beach area, because it is impossible to have negative beach area.) 
+
+We can also gather that the area at beach b does in fact differ from that of beach a, and that the rate of change for Beach B differs from Beach A by something other than 0. Similarly, the area at beach c differs from that of beach a. The rate of change for Beach C also differs from Beach A by something other than 0. 
+
+The p-value for each co-efficient was <0.05 in every case, and therefore meant that we must reject the null hyspotheses stated in question 3. 
+
+
+
