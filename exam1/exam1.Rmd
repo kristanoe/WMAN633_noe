@@ -1,0 +1,155 @@
+---
+title: "Exam 1"
+author: "Krista Noe"
+date: "2/17/2021"
+output: html_document
+---
+
+1. Import this dataset into R and inspect the first several rows of your data
+```{r}
+data <- read.csv("Exam 1 Data.csv")
+head(data)
+```
+<br>
+
+2. Fit a linear model that assumes your response is a function of x1, x2, and x3. Include an interaction
+between x1 and x2 only (i.e., do not include an interaction between your categorical variables and any
+other variables).
+```{r}
+fit <- lm(y~x1*x2+x3, data = data)
+fit
+```
+<br>
+
+3. Interpret the effect of variable x1 when x2 = -1
+```{r}
+# The full equation looks like this y = B0 + (B1*X1) + (B2*X2) + (B3*X1*X2) + (B4*x3).
+
+# The equation to use would be: y = B0 + (B1+B3)*X1 + B2; except we are using x2, so therefore we would use:  y = B0 + (B2+B3)*X2 + B1
+
+B1 = coef(fit)[2]
+B2 = coef(fit)[3]
+B3 = coef(fit)[6]
+B0 = coef(fit)[1]
+B4 = coef(fit)[4]
+B5 = coef(fit)[5]
+
+whenx1isnegone <- B0 + (B2+B3)*-1 +B1
+whenx1isnegone # 0.5286293
+
+#When x1 is negative one, the response is 0.528
+
+```
+<br>
+
+4. Interpret the effect of variable x1 when x2 = 1
+```{r}
+whenx1isone <- B0 + (B2+B3)*1 +B1
+whenx1isone # 1.394743
+
+#When x1 is positive one, the response is 1.394
+```
+<br>
+
+5. Interpret the effect of variable x3
+```{r}
+# The variable x3 will be different depending on what group you are in (a, b, or c). We can regard a as the intercept and what we use to compare b and c to, since in the output, a becomes the default. 
+
+# For evaluating x3, we can make 3 models for each variable.
+
+# The first (a) will be just the intercept: 
+# y = B0 + (B1*X1) + (B2*X2) + (B3*X1*X2)
+
+# The second (b) will be this model with the added x3b term at the end: 
+# y = B0 + (B1*X1) + (B2*X2) + (B3*X1*X2) + (B4*x3)
+# y = 0.701218 + (0.260469*x1) + (0.283447*x2) + (0.149610*x1*x2) + (-1.627162*x3)
+
+# The third (c) will be like the b model, except with the different beta given to us in the coefficient output:
+# y = B0 + (B1*X1) + (B2*X2) + (B3*X1*X2) + (B5*x3)
+# y = 0.701218 + (0.260469*x1) + (0.283447*x2) + (0.149610*x1*x2) + (0.002504*x3)
+
+# Because there is a slightly different model associated with each of the three categories in x3, we can determine the extent to which x3 has an effect on the response.
+
+```
+<br>
+
+6. Describe how R codes the categorical variable x3. Demonstrate by reporting the first 5 values of variables derived from x3.
+```{r}
+# R uses built-in dummy coding for x3, because it is a categorical variable. What it does is takes the first categorical variable, in this case "a" and makes that the default. R then comes up with beta coefficients for the other variables (in this case "b" and "c") and we must always then compare models with these terms in them to the default (a), to truly interpret what the output is saying. 
+
+
+##??
+head(data$x3, 5)
+```
+<br>
+
+7. Derive the test statistic and p-value associated with the interaction between x1 and x2. What is the null hypothesis assumed by the "lm()" function? Do we reject or fail to reject this null hypothesis?
+Defend your answer.
+```{r}
+# Test statistic for x1:x2
+b_3 = coef(fit)[6] # estimate
+s_b3 <- summary(fit)[['coefficients']]['x1:x2', 'Std. Error'] # standard error
+B_3 <- 0 # null
+
+t3 <- (b_3 - B_3) / s_b3 #test statistic
+t3  #1.664819
+
+# P-value
+df = 100 - 6 # n - number of coefficients
+p3 <- 2 * (pt(-1 * abs(t3), df = df))
+p3 # 0.09927881 
+
+# The null hypothesis for this term (x1:x2) is that there is no significant interaction occurring between x1 and x2.
+
+# Because our p-value is > 0.05, we fail to reject our null; with an alpha level set at 0.05, we do not have sufficient evidence to reject a null that is greater than 0.05, and therefore we reject this null. 
+```
+
+<br>
+
+## Other Questions
+8. assume you have the following realizations of random variable Y :
+y = (3, 8, 7)
+Further assume realizations of the random variable Y are Gaussian distributed:
+y ∼ Gaussian(µ, σ2
+).
+Fix σ
+2 = 1 and µ = 8, and evaluate the probability density at each of your 3 realizations.
+```{r}
+# Here you use a probability density function.
+
+mu <- 8
+v <- 1 
+y <- c(3,8,7)
+
+
+1 / (sqrt(2 * pi * v)) * exp(- (y - mu) ^ 2 / (2 * v))
+
+
+# the probability of observing any realization of the random variable 3 is 1.486720e-06
+
+# the probability of observing any realization of the random variable 8 is 3.989423e-01
+
+# the probability of observing any realization of the random variable 7 is 2.419707e-01
+
+```
+
+<br>
+
+
+9. What is a type I error? What is a p-value? How are the two quantities related?
+
+```{r}
+# A type I error is falsely rejecting a null  hypothesis that is true. 
+
+# A p-value is is the probability of observing a a more extreme value of the test statistic under the assumptions of the null hypothesis. 
+
+# These two terms are related because we use p-values to help us avoid committing a type I error. 
+```
+
+<br> 
+
+10. What is a fundamental assumption we must make to derive inference about regression coefficients of a
+linear model?
+```{r}
+# We must assume that all errors are normally distributed in order to derive inference from our model output. 
+```
