@@ -1,0 +1,99 @@
+---
+title: "Homework 3"
+author: "Krista Noe"
+date: "2/28/2021"
+output: html_document
+---
+
+- y: response variable (1 for success, 0 for failure)  
+- x1: continuous predictor variable  
+- x2: categorical predictor variable with 2 levels: "a" and "b"
+
+<br>
+
+1. Fit a logistic regression model that assumes the probability of success is an additive function of variables
+x1 and x2.
+```{r}
+data <- read.csv("Homework 3 Data.csv")
+head(data)
+
+fit <- glm(y ~ x1 + x2, family = binomial, data = data)
+summary(fit)
+```
+
+<br>
+
+2. Interpret the effect of variable x1 on the log odds of success. Verify your interpretation in R.
+
+```{r}
+betas <- coef(fit)
+betas[1]; betas[2]; betas[3] ##(just to double check they're right!)
+
+p_1 <- plogis(betas[1] + betas[2] * 1 + betas[3] * 0)
+p_2 <- plogis(betas[1] + betas[2] * 2 + betas[3] * 0)
+# the slope coefficient is negatively correlated; there is a lower probability of ocurrence when x1 is higher 
+
+# log odds ratio
+log((p_2 / (1 - p_2)) / (p_1 / (1 - p_1)))
+
+# does it check out in R?
+betas[2] 
+# yes it does
+```
+
+
+<br>
+
+3. Interpret the effect of variable x2 on the log odds of success. Verify your interpretation in R.
+
+```{r}
+
+p_1 <- plogis(betas[1] + betas[2] * 1 + betas[3] * 0)
+p_2 <- plogis(betas[1] + betas[2] * 1 + betas[3] * 1)
+
+log((p_2 / (1 - p_2)) / (p_1 / (1 - p_1)))
+betas[3]
+
+# the slope coefficient for x2 is negatively correlated as well; there is a lower probability of ocurrence when x2 is higher 
+```
+
+
+<br>
+
+4. Duplicate the Wald Test and p-values for variables x1 and x2 performed by the glm() function. Do
+you reject or fail to reject your null hypothesis?
+
+```{r}
+#wald test
+ts1 <- betas[2] / summary(fit)[['coefficients']]['x1', 'Std. Error']
+ts2<- betas[3] / summary(fit)[['coefficients']]['x2b', 'Std. Error']
+
+#p-value
+2 * pnorm(-1 * abs(ts1), mean = 0, sd = 1)  # x1
+# fail to reject given that p > 0.05
+2 * pnorm(-1 * abs(ts2), mean = 0, sd = 1)  # x2
+# reject given that p < 0.05
+
+
+#checks out with summary output as well
+summary(fit)[['coefficients']]['x1', 'Pr(>|z|)']  
+summary(fit)[['coefficients']]['x2b', 'Pr(>|z|)']
+```
+
+
+
+<br>
+
+5. Predict and plot the mean probability of success over the range of values of x1.
+```{r}
+# log odds of use
+
+#range of x1 values
+x1p <- seq(from = min(data$x1), to = max(data$x1), length.out = 100)
+
+#predictions
+y <- betas[1] + betas[2] * x1p + betas[3]
+
+plot(x = x1p, y = plogis(y),
+xlab = 'x1', cex.axis = 1.5, cex.lab = 1.5, type = 'l')
+```
