@@ -48,8 +48,8 @@ betas[2]
 
 ```{r}
 
-p_1 <- plogis(betas[1] + betas[2] * 1 + betas[3] * 0)
-p_2 <- plogis(betas[1] + betas[2] * 1 + betas[3] * 1)
+p_1 <- plogis(betas[1] + betas[2] * 0 + betas[3] * 0)
+p_2 <- plogis(betas[1] + betas[2] * 0 + betas[3] * 1)
 
 log((p_2 / (1 - p_2)) / (p_1 / (1 - p_1)))
 betas[3]

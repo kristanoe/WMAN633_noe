@@ -443,8 +443,8 @@ betas[2] </code></pre>
 <ol start="3" style="list-style-type: decimal">
 <li>Interpret the effect of variable x2 on the log odds of success. Verify your interpretation in R.</li>
 </ol>
-<pre class="r"><code>p_1 &lt;- plogis(betas[1] + betas[2] * 1 + betas[3] * 0)
-p_2 &lt;- plogis(betas[1] + betas[2] * 1 + betas[3] * 1)
+<pre class="r"><code>p_1 &lt;- plogis(betas[1] + betas[2] * 0 + betas[3] * 0)
+p_2 &lt;- plogis(betas[1] + betas[2] * 0 + betas[3] * 1)
 
 log((p_2 / (1 - p_2)) / (p_1 / (1 - p_1)))</code></pre>
 <pre><code>## (Intercept) 
