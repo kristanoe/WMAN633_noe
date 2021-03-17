@@ -1,0 +1,106 @@
+---
+title: "Homework 4"
+author: "Krista Noe"
+date: "3/17/2021"
+output: html_document
+---
+
+Included in this homework is an example dataset with the following variables:  
+- y: response variable (counts of the number of events)  
+- x1: continuous predictor variable  
+- x2: categorical predictor variable with 2 levels: "a" and "b"
+
+<br>
+
+1. Fit a Poisson regression model that assumes expected count is an interactive function of variables x1 and x2.
+```{r}
+data <- read.csv("Homework 4 Data.csv")
+head(data)
+fit <- glm(y ~ x1 * x2, family = poisson, data = data)
+summary(fit)
+
+```
+
+<br>
+
+2. Interpret the effect of variable x1 on the expected count when x2 is fixed at level "b". Verify your interpretation in R.
+
+```{r}
+betas <- coef(fit)
+
+# categorical variable 
+y_x2 <- betas[1] + betas[4]
+# continuous variable
+y_x1 <- betas[1]
+
+# log proportional change
+log(exp(y_x2) / exp(y_x1))
+
+betas[4] # verification 
+
+# also this
+exp(y_x2) / exp(y_x1)
+exp(betas[4])
+
+(exp(betas[4]) − 1) * 100 # so there's a 61.3% change
+```
+When x2 is fixed at level "b", there is approximately a 61.3% change in expected y by x1. 
+
+<br>
+
+3. Interpret the effect of variable x2 on the expected count when x1 is fixed at 1. Verify your interpretation in R.
+```{r}
+betas[3]
+
+a <- betas[1] + betas[2] + betas[3] + betas[4]
+b <- betas[1] + betas[2] + betas[4]
+
+exp(a) / exp(b)
+exp(betas[3])
+
+(exp(betas[3]) − 1) * 100 # -64.8% difference
+```
+When x1 is fixed at 1, the effect of variable x2 on expected count is a -64.8% difference between factor levels a and b. 
+
+<br>
+
+4. Predict the expected count, ± 95% confidence intervals, over the observed range of values of x1, assuming x2 is fixed at level "b".
+```{r}
+
+nd <- data.frame(
+  x1 = seq(min(data$x1), max(data$x1), length.out = 100),
+  x2 = factor(x = rep('b', times = 100),
+  levels = c('a', 'b'))
+)
+
+
+prd <- predict.glm(object = fit, newdata = nd, type = 'link', se.fit = T) #expected count
+low <- exp(prd$fit - qnorm(0.975) * prd$se.fit) # +95%
+high <- exp(prd$fit + qnorm(0.975) * prd$se.fit) # -95%
+
+
+plot(y = exp(prd$fit), x = nd$x1, xlab = 'x1',
+  ylab = 'Expected count', cex.axis = 1.5, cex.lab = 1.5,
+  ylim = c(min(low), max(high)), type = 'l')
+lines(x = nd$x1, y = low, lty = 2)
+lines(x = nd$x1, y = high, lty = 2)
+
+```
+
+<br>
+
+5. Predict the expected count, ± 95% confidence intervals, of levels "a" and "b", assuming x1 is fixed at it’s mean.
+```{r}
+nd2 <- data.frame(
+  x1 = rep(mean(data$x1, times = 2)), 
+  x2 = factor(x = c('a', 'b'))
+)
+
+prd <- predict.glm(object = fit, newdata = nd2, type = 'link', se.fit = T) #expected count
+low <- exp(prd$fit - qnorm(0.975) * prd$se.fit) # +95%
+high <- exp(prd$fit + qnorm(0.975) * prd$se.fit) # -95%
+
+exp(prd$fit) # this makes sense; so for factor level 'a' my predicted value is 6.5, with the confidence interval (1.87, 7.26), and for factor level 'b' the predicted value is 2.10, with the confidence interval (0.74, 2.56)
+
+```
+
