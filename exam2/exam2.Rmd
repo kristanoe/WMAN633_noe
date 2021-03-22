@@ -1,0 +1,161 @@
+---
+title: "Exam 2"
+author: "Krista Noe"
+date: "3/22/2021"
+output: html_document
+---
+
+1. Import this dataset into R and inspect the first several rows of your data
+```{r}
+data = read.csv("Exam 2 Data.csv")
+head(data)
+
+```
+<br>
+
+2. Fit a Poisson model that assumes your response is a function of x1, x2, and x3. Include an interaction
+between x1 and x2 only (i.e., do not include an interaction between your categorical variables and any
+other variables).
+```{r}
+fit <- glm(y ~ x1*x2 + x3, family = poisson, data = data)
+summary(fit)
+
+```
+<br>
+
+3. Interpret the effect of variable x1 when x2 = -1
+
+This is the equation:  
+
+$$
+y = \beta_0 \ + \beta_1X_1 \ + \beta_2X2 \ + \beta_3b \ + \beta_4c \ + \beta_5X1X2
+$$
+  
+Rearrange to find effective slope: 
+
+$$
+y = \beta_0 \ + X1*(\beta_1 \ + \beta_5X2) \ + \beta_2X2 + \beta_3b \ + \beta_4c
+$$
+```{r}
+# beta 1 + beta 5*-1 = answer
+
+betas <- coef(fit)
+betas[2] + betas[6]*-1
+
+```
+Beta 1 + Beta 5*X2 represents the change in log odds associated with a 1 unit change in X1. In this data, log odds success decreases by 0.74 for every 1 unit change in X1
+
+
+
+<br>
+
+4. Plot expected counts ±90% confidence intervals over the observed range of variable x1. Assume variable
+when **x2 = -1** and category **"a"**. 
+```{r}
+nd <- data.frame(
+  x1 = seq(min(data$x1), max(data$x1), length.out = 100),
+  x2 = -1, 
+  x3 = factor('a', levels = c('a', 'b', 'c'))
+)
+
+
+prd <- predict.glm(object = fit, newdata = nd, type = 'link', se.fit = T) #expected count
+# 90% confidence intervals
+low <- exp(prd$fit - qnorm(0.95) * prd$se.fit) 
+high <- exp(prd$fit + qnorm(0.95) * prd$se.fit)
+
+
+plot(y = exp(prd$fit), x = nd$x1, xlab = 'x1',
+  ylab = 'Expected count', cex.axis = 1.5, cex.lab = 1.5,
+  ylim = c(min(low), max(high)), type = 'l')
+lines(x = nd$x1, y = low, lty = 2)
+lines(x = nd$x1, y = high, lty = 2)
+```
+
+<br>
+
+5. Interpret the effect of variable x3. 
+
+```{r}
+summary(fit)
+
+# 0.375 (b) 
+# -0.883 (c)  
+```
+
+Between categories a and b, the difference in log odds is 0.375.  
+Between categories a and c, the difference in log odds is -0.883.
+
+<br>
+
+6. Use contrasts to evaluate the null hypothesis that the difference in log expected count between levels
+"b" and "c" = 0. Fix x1 and x2 at their means. 
+```{r}
+
+x <- matrix(c(0, 0, 0, -1, 1, 0), nrow = 1)
+
+library(multcomp)
+
+contrast <- glht(model = fit, linfct = x)
+summary(contrast)
+
+
+
+#check by x3c - x3b
+betas[5] - betas[4]
+
+```
+Our null hypothesis is the difference between levels b and c of variable x3 is = 0. Because of a low p-value (<2e-16), we reject our null; therefore, the difference between factor levels b and c **is** different from 0. 
+
+
+<br>
+
+7. Derive the test statistic and p-value associated with the interaction between x1 and x2. What is the
+null hypothesis? Do we reject or fail to reject this null hypothesis? Defend your answer.
+```{r}
+# wald for test statistic
+ts <- betas[6] / summary(fit)[['coefficients']]['x1:x2', 'Std. Error']
+
+# p-value
+2 * pnorm(-1 * abs(ts), mean = 0, sd = 1)  
+
+# checks out with summary output as well
+summary(fit)[['coefficients']]['x1:x2', 'Pr(>|z|)']
+```
+The null hypothesis is that this interaction term x1:x2 (beta 5) = 0. Because beta 5 is the change in the effective slope coefficient of x1 associated with a 1-unit change in x2, and given our low p-value of 1.976182e-08, we must reject our null and can conclude that there is sufficient evidence that the effect of variable x1 depends on the level of x2.
+
+<br>
+
+## Other Questions
+8. assume you have the following realizations of random variable Y :
+y = (1, 0)
+Further assume realizations of the random variable Y are Bernoulli distributed:
+y ∼ Bernoulli(p).
+What is the probability of observing each of these random variables assuming the log odds of success =
+-2?
+```{r}
+dbinom(c(1, 0), size = 1, prob = plogis(-2))
+
+```
+
+<br>
+
+9. What is the "support" of a Bernoulli random variable? What are the acceptable values of it’s sole
+parameter? To which quantity do we apply a link function, and why do we do this? What is the
+principle link function we use in binomial (i.e., logistic) regression, and what it it’s inverse function?
+
+Bernoulli random variables are either 0 or 1. It's sole parameter is p which represents the probability of success in each trial. Acceptable values for p are (0,1). We apply the link function to the parameter p. We do this because it maps a number bounded between 0 and 1 to the real number line. 
+We usually use a logit link function. It's inverse function is exp(x)/1+exp(x) = p. 
+
+
+10. What is a fundamental assumption we make to derive inference when comparing two levels of a
+categorical random variable?
+
+When using categorical variables, the coefficient is the difference in the response between the reference and the level of the categorical covariate (ex. level 'b' or 'c'). 
+
+
+
+
+
+
+
