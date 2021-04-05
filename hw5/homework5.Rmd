@@ -1,0 +1,101 @@
+---
+title: "Homework 5"
+author: "Krista Noe"
+date: "4/4/2021"
+output: html_document
+---
+
+1. Load data and place into an unmarkedFrameOccu object
+
+```{r}
+y <- read.csv("Bobcat.csv")  # detection / nondetection data
+p_covs <- read.csv("p covariates.csv")  # detection covariates
+site_covs <- read.csv("psi covariates.csv")  # site coviariates
+
+library(unmarked)
+
+bobcat_mat <- as.matrix(y)
+
+det_covs <- list(
+  people = data.frame(p_covs[, c(1:71)])
+)
+
+occu_data <- unmarkedFrameOccu(y = bobcat_mat, 
+                               obsCovs = det_covs, 
+                               siteCovs = site_covs)
+
+```
+
+<br>
+
+
+2. Fit an occupancy model that assumes conditional detection probability is a function of the number of
+people photographed at a site, and occupancy probability is a function of disturbance within 5km.
+
+```{r}
+
+fit <- occu(formula = ~ people ~ Dist_5km, data = occu_data)
+summary(fit)
+
+```
+
+<br>
+
+
+3. Interpret the effect of the number of people photographed at each site on conditional detection probability
+of bobcat. Verity your interpretation in R.
+
+```{r}
+betas <- coef(fit)
+
+p_0 <- plogis(betas[1] + betas[2] + betas[3] + betas[4] * 0)
+p_1 <- plogis(betas[1] + betas[2] + betas[3] + betas[4] * 1)
+
+log((p_1 / (1-p_0)) / (p_0 / (1-p_1)))
+betas[4]
+```
+There is a -0.0608 change in the log odds of detecting a bobcat per one person. 
+
+
+<br> 
+
+
+4. Re-create the Wald test for the effect of disturbance within 5km. What is the null hypothesis? Do you
+reject or fail to reject this null hypothesis?
+
+```{r}
+summary(fit)
+w <- -23.64 / 4.773
+w
+
+2 * pnorm(-1 * abs(w))
+
+```
+The null hypothesis for this model is the effect on the log odds success of disturbance within 5km is 0. We reject this null hypothesis because our value (7.313065e-07) is less than 0.05.
+
+
+<br> 
+
+
+5. Predict and plot the effect of disturbance within 5km on bobcat occupancy probability. Do this over
+the range of observed disturbance within 5km.
+```{r}
+
+new_psi <- data.frame(people = rep(0, length.out = 100), 
+                      Dist_5km = seq(from = 0, to = 0.13, length.out = 100))
+
+predict <- predict(object = fit, newdata = new_psi,
+            type = 'state')
+
+plot(y = predict$Predicted, 
+     x = seq(from = min(site_covs$Dist_5km), to = max(site_covs$Dist_5km), length.out = 100), 
+     xlab = "Disturbance Distance", ylab = "Occupancy Probability", type = "l")
+lines(y = predict$lower, 
+      x = seq(from = min(site_covs$Dist_5km), to = max(site_covs$Dist_5km), length.out = 100), lty = 2)
+lines(y = predict$upper, 
+      x = seq(from = min(site_covs$Dist_5km), to = max(site_covs$Dist_5km), length.out = 100), lty = 2)
+
+
+```
+
+
