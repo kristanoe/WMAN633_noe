@@ -1,0 +1,133 @@
+---
+title: "Homework 6"
+author: "Krista Noe"
+date: "4/12/2021"
+output: html_document
+---
+N-mixture modeling dataset:  
+- **count.csv**: Counts from each replicate survey. Each row is a site, and each column is a replicate survey. Column names j1, j2, j3 represent each replicate survey.  
+- **obs_covs.csv**: A continuous covariate associated with each replicate survey. Each row is a site, and each column is a replicate survey. Column names j1, j2, j3 represent each replicate survey.  
+- **site_covs.csv**: Covariates associated with each site. Each row is a site, and each column a covariate. Column x1 is a continuous covariate, and column x2 is a categorical covariate with 4 levels: "a", "b", "c", and "d".
+
+<br>
+
+1. Load data and place into an unmarkedFramePCount object
+
+```{r}
+library(unmarked)
+
+# count data
+y <- read.csv("count.csv")
+head(y)
+
+y_mat <- as.matrix(y)
+
+
+# detection covariates
+p_covs <- read.csv("obs_covs.csv")
+head(p_covs)
+
+det_covs <- list(
+  j = data.frame(p_covs[, c(1:3)])
+)
+
+
+# site-level covariates
+site_covs <- read.csv("site_covs.csv")
+head(site_covs)
+
+site_covs$x2 <- factor(site_covs$x2)
+
+nmix_data <- unmarkedFramePCount(y = y_mat, # detection / non-detection
+                                    siteCovs = site_covs, # site-level covs
+                                    obsCovs = det_covs) # detection covariates
+
+```
+
+<br>
+
+
+2. Fit an N-mixture model that assumes conditional detection probability is a function of the detection covariate provided, and expected abundance is a additive function of variables x1 and x2.
+
+```{r}
+fit <- pcount(formula = ~ j ~ x1 + x2, data = nmix_data, K = 100)
+summary(fit)
+
+```
+
+<br>
+
+3. Interpret the effect of x1 on the expected count at each site. Verity your interpretation in R.
+
+```{r}
+betas <- coef(fit)
+
+#betas[2] is x1
+
+p_0 <- (betas[1] + betas[2]*0 + betas[3] + betas[4] + betas[5])
+p_1 <- (betas[1] + betas[2]*1 + betas[3] + betas[4] + betas[5])
+
+p_1 - p_0
+betas[2]
+
+log(exp(p_1) / exp(p_0))
+betas[2]
+```
+There is a 0.369 unit change in log expected count for every 1-unit change in the predictor x1. 
+
+
+<br>
+
+4. Predict and plot the effect of the supplied detection covariate. Do this over the range of this covariate.
+
+```{r}
+
+new_lam <- data.frame(j = seq(min(y), max(y), length.out = 100
+                              ))
+#predict
+prd <- predict(object = fit, newdata = new_lam, type = 'det')
+
+#plot
+plot(y = prd$Predicted, x = new_lam$j, type = 'l', 
+     ylim = c(0, prd[1, 'upper']),
+      ylab = 'Expected count')
+lines(y = prd$lower, x = new_lam$j, lty = 2)
+lines(y = prd$upper, x = new_lam$j, lty = 2)
+
+
+```
+
+<br>
+
+
+5. Use contrasts to compare expected abundance between all pairwise levels of variable x2. Obtain p-values associated with each contrast and tell me whether you reject or fail to reject each null hypothesis tested.
+
+```{r}
+betas
+
+# first make a matrix (only dealing with x2)
+x <- matrix(
+  c(0, 0, 1, -1, 0, #betas[3] and betas[4]
+    0, 0, 1, 0, -1, #betas[3] and betas[5]
+    0, 0, 0, 1, -1), #betas[4] and betas[5]
+  nrow = 3, byrow = T
+  )
+
+lin_com <- linearComb(obj = fit, coefficients = x, type = 'state')
+
+# Wald test
+w <- coef(lin_com) / SE(lin_com)
+w
+
+# pvalues
+2 * pnorm(-1 * abs(w))
+
+```
+The contrast calculation between betas[3] and betas[4] (x2 b and c) pvalue = 8.305437e-01, therefore we fail to reject the null hypothesis at alpha level 0.05. There is not enough evidence to determine a significant difference. 
+
+The contrast calculation between betas[3] and betas[5] (x2 b and d) pvalue = 1.43e-57, therefore we reject the null hypothesis at alpha level 0.05. 
+
+The contrast calculation between betas[4] and betas[5] (x2 c and d) pvalue = 8.896230e-41, therefore we reject the null hypothesis at alpha level 0.05. 
+
+
+
