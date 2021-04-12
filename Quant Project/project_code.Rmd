@@ -1,0 +1,151 @@
+---
+title: "Project Code"
+author: "Krista Noe"
+date: "April 9, 2021"
+output: html_document
+---
+
+```{r}
+data <- read.csv("quant_data.csv")
+head(data)
+
+```
+Describe this data.  
+- richness: response variable representing the apparent richness observed at each wetland site  
+- wet_type: categorical predictor variable with 2 levels representing whether the wetland was mitigated (level 'a') or natural (level 'b')  
+- veg_rich: continuous predictor variable representing the vegetation richness observed at a wetland
+
+<br>
+
+I would like to fit a general linear model that predicts apparent small mammal richness by wetland type (mitigated or natural) and a general linear model that predicts small mammal richness by both wetland type and vegetation. 
+```{r}
+fit <- glm(richness ~ wet_type, family = poisson, data = data) # just wetland type
+summary(fit)
+
+fit2 <- glm(richness ~  wet_type + veg_rich , family = poisson, data = data) # wetland type AND vegetation
+summary(fit2)
+
+```
+
+<br>
+
+### Wald test
+```{r}
+#wald test
+
+betas <- coef(fit)
+betas2 <- coef(fit2)
+
+#test statistic
+ts1 <- betas[2] / summary(fit)[['coefficients']]['wet_typeb', 'Std. Error'] # wetland only model
+ts2 <- betas2[3] / summary(fit2)[['coefficients']]['veg_rich', 'Std. Error'] # wetland and vegetation model
+
+#p-value
+2 * pnorm(-1 * abs(ts1), mean = 0, sd = 1)  # wetland only model
+2 * pnorm(-1 * abs(ts2), mean = 0, sd = 1)  # wetland and vegetation model
+
+
+#checks out 
+summary(fit)[['coefficients']]['wet_typeb', 'Pr(>|z|)'] # wetland only model
+summary(fit2)[['coefficients']]['veg_rich', 'Pr(>|z|)'] # wetland and vegetation model
+```
+
+<br>
+
+### Effect of vegetation on log odds of success
+```{r}
+# wetland and vegetation model
+p_1 <- plogis(betas2[1] + betas2[2] * 0 + betas2[3] * 0)
+p_2 <- plogis(betas2[1] + betas2[2] * 0 + betas2[3] * 1)
+
+log((p_2 / (1 - p_2)) / (p_1 / (1 - p_1)))
+betas2[3]
+```
+The log proportional change in expected count associated with a 1-unit change in vegetation diversity is 0.006813409. 
+
+<br> 
+
+### Effect of wetland type on log odds of success
+```{r}
+# wetland only model
+p_1 <- plogis(betas[1] + betas[2] * 1)
+p_2 <- plogis(betas[1] + betas[2] * 2)
+
+log((p_2 / (1 - p_2)) / (p_1 / (1 - p_1)))
+betas[2]
+```
+The log proportional change in expected count associated with a 1-unit change in wetland type is 0.4660897. 
+
+<br>
+
+### Graphs
+
+## Expected count for vegetation richness graph
+This graph assumes wetland type is fixed at level “b” (natural wetlands)
+```{r}
+nd <- data.frame(
+  veg_rich = seq(min(data$veg_rich), max(data$veg_rich), length.out = 100),
+  wet_type = factor(x = rep('b', times = 100),
+  levels = c('a', 'b'))
+)
+
+
+prd <- predict.glm(object = fit2, newdata = nd, type = 'link', se.fit = T) #expected count
+low <- exp(prd$fit - qnorm(0.975) * prd$se.fit) # +95%
+high <- exp(prd$fit + qnorm(0.975) * prd$se.fit) # -95%
+
+
+plot(y = exp(prd$fit), x = nd$veg_rich, xlab = 'Vegetation Diversity',
+  ylab = 'Expected count', cex.axis = 1.5, cex.lab = 1.5,
+  ylim = c(min(low), max(high)), type = 'l')
+lines(x = nd$veg_rich, y = low, lty = 2)
+lines(x = nd$veg_rich, y = high, lty = 2)
+```
+
+## Expected count for wetland type graph
+```{r}
+nd2 <- data.frame(
+  veg_rich = rep(mean(data$veg_rich, times = 2)), 
+  wet_type = factor(x = c('a', 'b'))
+)
+
+prd <- predict.glm(object = fit, newdata = nd2, type = 'link', se.fit = T) #expected count
+low <- exp(prd$fit - qnorm(0.975) * prd$se.fit) # +95%
+high <- exp(prd$fit + qnorm(0.975) * prd$se.fit) # -95%
+
+
+wet <- exp(prd$fit) 
+
+par(las = 1)
+willthiswork = barplot(wet, ylim = c(0, 10), 
+        names.arg = c("Wetland Type a (mitigated)", "Wetland Type b (natural)"), 
+        col = c("snow4", "snow"), space = c(0.1, 1), 
+        ylab = "Expected Count", xlab = "Wetland Type", 
+        beside = T)
+abline(h = 0)
+legend("top", horiz = T, c("Mitigated", "Natural"), fill = c("snow4", "snow"), bty = "y")
+title(main = "Expected Count by Wetland Type")
+arrows(x0 = willthiswork, y0 = high, x1 = willthiswork, y1 = low, 
+       angle = 90, code = 3, length = 0.1, lwd = 0.5)
+
+```
+
+### Tables
+```{r}
+summary(fit) # will include some important output for this model in report
+summary(fit2) # will include some important output for this model in report
+```
+
+
+| Wetland Only Model               | Estimate  | Standard Error | P value  |
+| -------------------------------- | --------- | -------------- | -------- |
+| Intercept (mitigated wetland)    | 0.9808    | 0.2500         | 8.73e-05 | 
+| Natural Wetland                  | 0.4661    | 0.3483         | 0.181    |
+
+<br>
+
+| Wetland and Vegetation Model     | Estimate  | Standard Error | P value  |
+| -------------------------------- | --------- | -------------- | -------- |
+| Intercept (mitigated wetland)    | 0.716615  | 1.106301       | 0.517    | 
+| Natural Wetland                  | 0.535071  | 0.446531       | 0.231    |
+| Vegetation Diversity             | 0.006813  | 0.027710       | 0.806    |

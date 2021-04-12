@@ -1,0 +1,149 @@
+---
+title: "Semester Project Description"
+author: "Krista Noe"
+header-includes:
+    - \usepackage{setspace}\doublespacing
+    - \usepackage[left]{lineno}
+    - \linenumbers
+    - \pagenumbering{arabic}
+date: "April 9, 2021"
+output: pdf_document
+---
+
+\newpage
+
+
+## Introduction  
+|      Mitigated wetlands are restored, created, enhanced, or preserved wetlands that are meant to replace the ecosystem services of natural wetlands that are lost due to human actions. Restored wetlands are pre-existing degraded wetlands that have been restored to be fully functional once again. Created wetlands, however, are areas that have not been a wetland historically. Given the responsibility of wetlands in our ecosystem, it is critical to question the ability of these wetlands to match that of their natural wetland counterparts. One method of determining this adequacy is by monitoring taxa that use the wetlands. Small mammals are largely under-represented in these studies. My research question is if small mammal richness at mitigated wetlands match that of natural wetlands. In other words, the goal of this project is to examine small mammal richness in natural versus mitigated wetlands to determine if mitigated wetlands adequately match natural wetlands in terms of small mammal richness. My objectives are to model species richness at each wetland site as a result of being in either a mitigated wetland or a natural wetland. Given that mitigated wetlands tend to have more pioneer species of vegetation (Balcombe et al. 2005), and that small mammals are largely dependent on vegetation (Wywialowski 1987), I predict that natural wetlands will have greater vegetation diversity, and therefore higher small mammal richness. 
+
+
+## Methods
+### Field Protocols
+|      To collect data, a trapping period of five nights occurred at each of the ten wetland sites that were sampled in 2020. Small mammals were trapped using Sherman Live traps and a bait of peanut butter and oats. Traps were laid out in transects, as opposed to grids, which has been studied to be more effective at community sampling than grids (Pearson and Ruggeiro 2002). There were a minimum of two transects spaced 50 meters apart from one another in each wetland and 25 traps spaced 10 meters in each transect. When small mammals were captured, they received a special mark to identify individuals, and individual information was recorded, such as species of the individual, sex, and reproductive status. Vegetation information was collected at each trap location in 1 meter X 1 meter squared quadrant, centered around the trap. Species identification and percent cover by using a cover class index was recorded. 
+
+
+### Statistical Model for Response Variable Description
+|      The response variable we are modeling is species richness using a Poisson distribution. This will be done by using R Studio (R Core Team 2019) using the base R glm function. A Poisson distribution describes the number of individuals over a specified area or time span, and is the best for this data because we are working with count data. 
+ 
+
+### Predictor Variable Description
+|      We modeled species richness as a function of the predictor variable wetland type (mitigated versus natural) and vegetation. The predictor variable wetland type was categorical and consisted of either being a mitigated or natural wetland. This information was collected prior to conducting trapping. The predictor variable of vegetation is continuous and was determined with field data. To calculate vegetation richness at the site level, the number of different species present was simply counted across all quadrats at the site to get a vegetation richness estimate for each site. This vegetation calculation for each site is then used in modeling small mammal richness at each site. We are using apparent species richness; this is "apparent" because of the possibility of not detecting species that may have been present but were not captured. This is simply determined by the count of the different species that were present at each site.
+
+
+### Inferential Procedure Description
+|      We will first create a model that predicts how wetland type alone affects our response variable species richness. In the second model, we will incorporate the vegetation and make richness an additive function of both wetland type and vegetation richness. 
+
+|      For evaluating our hypotheses, we will use null hypothesis significance testing with a 5% alpha level and will use the Wald test. Our two null hypotheses are as follows: 1) there is no effect of wetland type on apparent species richness observed; and 2) there is no effect of both wetland type and vegetation richess on apparent species richness. Our alternative hypotheses are as follows: 1) there is an effect of wetland type on apparent species richness; and 2) there is an effect of both wetland type and vegetation richness on apparent species richness.
+
+
+
+## Results
+|      Our sample size was 10 wetland sites, six of the sites being mitigated wetlands, and four of the sites being natural wetlands. The finding from our first model determines that there is no significant difference between mitigated and natural wetlands in terms of apparent species richness (Wald Test *p* = 0.181)(Table 1). Figure 1 represents a graphical depiction of the expected count of species richness of both mitigated and natural wetland types; mitigated wetlands had an estimated value of 2.67, with a confidence interval of (1.63, 4.35), and natural wetlands had an estimated value of 4.25, with a confidence interval of (2.64, 6.84). Graphically, it is clear that the two wetland types experience overlap in their range of values, and therefore does not demonstrate a clear enough distinction to determine them to be statistically significant. When the vegetation variable was added in the second model to determine if vegetation also influenced apparent species richness at these sites, we found there was not evidence to determine that vegetation has an effect on richness at these sites (Wald Test *p* = 0.806)(Table 2). Figure 2 represents a graphical depiction of the expected count of species richness by vegetation richness when wetland type is fixed at level b (natural wetlands). When vegetation richness increases, there is a slight increase in expected count, however, this is not statistically significant. 
+
+|     We decided against performing a test for model selection, because although there were two models to process and draw inference from, we were not planning on comparing the two models to determine which fit better. We mostly were interested in the first model with wetland type as a predictor only because that is the basis of this research (i.e. can mitigated wetlands foster a similar small mammal richness to that of natural wetlands?). However, we wanted to include vegetation as a factor as well because it is an important element of small mammal habitat and may influence their ability to survive at a site. If vegetation was drastically different between mitigated and natural wetlands, we would expect the small mammal communities to be altered there as well. 
+
+|     What this finding signifies biologically is that mitigated wetlands are able to support an apparent species richness that is similar to natural wetlands. However, it is important to remember that we are working with apparent richness; all species may not be detected at each site, especially the more rare or elusive small mammals such as the star-nosed mole (*Condylura cristata*) or the southern bog lemming (*Synaptomys cooperi*).
+
+
+
+## Tables and Figures
+
+##### Table 1.
+Model output for wetland only model.  
+
+| Wetland Only Model               | Estimate  | Standard Error | P value  |
+| -------------------------------- | --------- | -------------- | -------- |
+| Intercept (mitigated wetland)    | 0.9808    | 0.2500         | 8.73e-05 | 
+| Natural Wetland                  | 0.4661    | 0.3483         | 0.181    |
+
+<br>
+
+##### Table 2.
+Model output for wetland and vegetation model.
+
+| Wetland and Vegetation Model     | Estimate  | Standard Error | P value  |
+| -------------------------------- | --------- | -------------- | -------- |
+| Intercept (mitigated wetland)    | 0.716615  | 1.106301       | 0.517    | 
+| Natural Wetland                  | 0.535071  | 0.446531       | 0.231    |
+| Vegetation Diversity             | 0.006813  | 0.027710       | 0.806    |
+
+<br>
+<br>
+
+```{r, echo=FALSE}
+
+data <- read.csv("quant_data.csv")
+fit <- glm(richness ~ wet_type, family = poisson, data = data) # just wetland type
+
+nd2 <- data.frame(
+  veg_rich = rep(mean(data$veg_rich, times = 2)), 
+  wet_type = factor(x = c('a', 'b'))
+)
+
+prd <- predict.glm(object = fit, newdata = nd2, type = 'link', se.fit = T) #expected count
+low <- exp(prd$fit - qnorm(0.975) * prd$se.fit) # +95%
+high <- exp(prd$fit + qnorm(0.975) * prd$se.fit) # -95%
+
+
+wet <- exp(prd$fit) 
+
+par(las = 1)
+willthiswork = barplot(wet, ylim = c(0, 10), 
+        names.arg = c("Wetland Type a (mitigated)", "Wetland Type b (natural)"), 
+        col = c("snow4", "snow"), space = c(0.1, 1), 
+        ylab = "Expected Count", xlab = "Wetland Type", 
+        beside = T)
+abline(h = 0)
+legend("top", horiz = T, c("Mitigated", "Natural"), fill = c("snow4", "snow"), bty = "y")
+title(main = "Expected Count by Wetland Type")
+arrows(x0 = willthiswork, y0 = high, x1 = willthiswork, y1 = low, 
+       angle = 90, code = 3, length = 0.1, lwd = 0.5)
+
+```
+
+##### Figure 1. 
+Expected species richness by wetland type. The gray bar represents the expected count for mitigated wetlands and the white bar represents the expected count for natural wetlands.
+
+
+```{r, echo=FALSE}
+data <- read.csv("quant_data.csv")
+fit2 <- glm(richness ~  wet_type + veg_rich , family = poisson, data = data) # wetland type AND vegetation
+
+nd <- data.frame(
+  veg_rich = seq(min(data$veg_rich), max(data$veg_rich), length.out = 100),
+  wet_type = factor(x = rep('b', times = 100),
+  levels = c('a', 'b'))
+)
+
+
+prd <- predict.glm(object = fit2, newdata = nd, type = 'link', se.fit = T) #expected count
+low <- exp(prd$fit - qnorm(0.975) * prd$se.fit) # +95%
+high <- exp(prd$fit + qnorm(0.975) * prd$se.fit) # -95%
+
+
+plot(y = exp(prd$fit), x = nd$veg_rich, xlab = 'Vegetation Richness',
+  ylab = 'Expected count', cex.axis = 1.5, cex.lab = 1.5,
+  ylim = c(min(low), max(high)), type = 'l')
+lines(x = nd$veg_rich, y = low, lty = 2)
+lines(x = nd$veg_rich, y = high, lty = 2)
+```
+
+##### Figure 2. 
+Expected species richness by vegetation richness. 
+
+
+
+\newpage
+
+## Literature Cited
+
+Balcombe, C. K., J. T. Anderson, R. H. Fortney, J. S. Rentch, W. N. Grafton, and W. S. Kordek. 2005. A comparison of plant communities in mitigation and reference wetlands in the mid-Appalachians. Wetlands 25:130–142.  
+  
+Pearson, D.E., and L. F. Ruggiero. 2003. Transect versus grid trapping arrangements for sampling small-mammal communities. Wildlife Society Bulletin 31(2): 454–459.  
+  
+R Core Team. 2019. R: A language and environment for statistical computing. R Foundation for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.  
+  
+Wywialowski, A.P. 1987. Habitat structure and predators: choices and consequences for rodent habitat specialists and generalists. Oecologia 72: 39-45.
+
+
+
