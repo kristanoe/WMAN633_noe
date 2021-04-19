@@ -1,0 +1,176 @@
+---
+title: "Homework 7"
+author: "Krista Noe"
+date: "4/12/2021"
+output: pdf_document
+---
+
+1. Load data and place into an unmarkedFrameOccu object
+```{r}
+library(unmarked)
+
+y <- read.csv("Bobcat.csv")  # detection / nondetection data
+p_covs <- read.csv("p covariates.csv")  # detection covariates
+site_covs <- read.csv("psi covariates.csv")  # site coviariates
+
+bobcat_mat <- as.matrix(y)
+
+det_covs <- list(
+  people = data.frame(p_covs[, c(1:71)])
+)
+
+occu_data <- unmarkedFrameOccu(y = bobcat_mat, 
+                               obsCovs = det_covs, 
+                               siteCovs = site_covs)
+
+```
+
+<br>
+
+
+2. Fit the following candidate set of models:
+
+
+ | detection model | occupancy model |
+ | --------------- | --------------- |
+ | intercept-only  | intercept-only  |
+ | people          | intercept-only  |
+ | intercept-only  | disturbance     | 
+ | people          | disturbance     |
+ 
+```{r}
+
+# detection model intercept only, occupancy model intercept only
+fit1 <- occu(~ 1 ~ 1, data = occu_data)
+
+# detection model people, occupancy model intercept only
+fit2 <- occu(~ people ~ 1, data = occu_data)
+
+# detection model intercept only, occupancy model disturbance
+fit3 <- occu(~ 1 ~ Dist_5km, data = occu_data)
+
+# detection model people, occupancy model disturbance
+fit4 <- occu(~ people ~ Dist_5km, data = occu_data)
+
+```
+ 
+<br>
+
+
+3. Perform model selection with AIC. What is your top model? How do you know? Is there model selection uncertainty?
+
+```{r}
+library(AICcmodavg)
+
+
+cand.set <- list(
+  m1 = fit1, m2 = fit2, m3 = fit3, m4 = fit4
+)
+
+mods <- aictab(cand.set = cand.set, second.ord = F)
+head(mods)
+```
+
+Model 3 is the top model (detection model intercept only, occupancy model disturbance), because it has the lowest AIC value. Yes, there is model selection uncertainty because the change in AIC between the "best" model (fit3) and the second best model (model 4) is <2. However, the remaining models have a much higher AIC and would not even be close to being a better a model. 
+
+<br>
+
+
+4. Average both the effect of people on detection, and disturbance on occupancy, over all models. Report model-averaged slope coefficients and 95% confidence intervals.
+
+```{r}
+## effect of people on detection ##
+
+avg_type_peopleondetection <- modavgShrink(
+              cand.set = cand.set, 
+              parm = "people", 
+              second.ord = F, 
+              parm.type = "detect")
+avg_type_peopleondetection$Mod.avg.beta
+
+# 95% confidence intervals
+avg_type_peopleondetection$Uncond.SE
+avg_type_peopleondetection$Lower.CL
+avg_type_peopleondetection$Upper.CL
+
+
+## effect of disturbance on occupancy ##
+
+avg_type_distonoccupancy <- modavgShrink( 
+              cand.set = cand.set, 
+              parm = "Dist_5km", 
+              second.ord = F, 
+              parm.type = "psi")
+avg_type_distonoccupancy$Mod.avg.beta
+
+# 95% confidence intervals
+avg_type_distonoccupancy$Uncond.SE
+avg_type_distonoccupancy$Lower.CL
+avg_type_distonoccupancy$Upper.CL
+
+```
+For the effect of popele on detection, the model averaged slope coefficient is -0.016, with 95% confidence intervals of (-4.06, 0.37). For the effect of disturbance on occupancy, the model averaged slope coefficient is -23.65, with 95% confidence intervals of (-33.006, -14.29). 
+
+
+<br>
+
+
+5. Obtain and plot model-averaged predictions of occupancy probability and detection probability. Average over all models, and make predictions over the observed range of each variable.
+
+```{r}
+################ Predict ######################
+
+## Occupancy Probability ##
+
+new_dat <- data.frame(Dist_5km = seq(from = 0, to = 0.13, length.out = 100))
+
+avg_prd_occupancy <- modavgPred(cand.set = cand.set,
+                      newdata = new_dat,
+                      second.ord = F, 
+                      parm.type = "psi"
+                     )
+avg_prd_occupancy
+
+min(avg_prd_occupancy$mod.avg.pred)
+max(avg_prd_occupancy$mod.avg.pred)
+
+
+## Detection Probability ##
+
+new_dat_2 <- data.frame(people = seq(from = 0, to = 0.35, length.out = 100))
+
+avg_prd_detection <- modavgPred(cand.set = cand.set,
+                      newdata = new_dat_2,
+                      second.ord = F, 
+                      parm.type = "detect"
+                     )
+
+avg_prd_detection
+
+
+
+
+################ Plot ######################
+
+## detection ##
+plot(y = avg_prd_detection$mod.avg.pred, x = new_dat_2$people, 
+     xlab = "People", ylab = "Detection Probability", 
+     ylim = c(min(avg_prd_detection$lower.CL), max(avg_prd_detection$upper.CL)), 
+     col = "red4")
+title("Detection")
+lines(x = new_dat_2$people, y = avg_prd_detection$lower.CL, col = "navy")
+lines(x = new_dat_2$people, y = avg_prd_detection$upper.CL, col = "navy")
+
+
+## occupancy ##
+plot(y = avg_prd_occupancy$mod.avg.pred, x = new_dat$Dist_5km, 
+     xlab = "Disturbance within 5km", ylab = "Occupancy Probability", 
+     xlim = c(0, 0.15),
+     ylim = c(min(avg_prd_occupancy$lower.CL), max(avg_prd_occupancy$upper.CL)), 
+     col = "red4")
+title("Occupancy")
+lines(x = new_dat$Dist_5km, y = avg_prd_occupancy$lower.CL, col = "navy")
+lines(x = new_dat$Dist_5km, y = avg_prd_occupancy$upper.CL, col = "navy")
+
+```
+
