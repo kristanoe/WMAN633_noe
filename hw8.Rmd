@@ -1,0 +1,114 @@
+---
+title: "Homework 8"
+author: "Krista Noe"
+date: "4/20/2021"
+output: html_document
+---
+
+- sosp_nmix.csv: counts of song sparrow at each survey. Each row is a site, and each column is a replicate survey.  
+
+- p_covs_nmix.csv: detection-level covariates recorded at each survey. Each row is a site, and each column is a replicate survey (1 day). xxx.1 represents covariate xxx recorded at survey 1, and xxx.2 represents covariate xxx recorded at survey 2. For this exercise, we will use variables time (hours past midnight that the survey started) and sky (0 = clear skies; 1 = partly cloudy; 2 = overcast; 4 = precipitation).  
+
+- n_covs_nmix.csv: site-level covariates. Defined in the N-Mixture Models lecture, slide 34. For this exercise, we will use size (wetland size in ha) and type (acep = Agricultural Conservation Easement Program wetland; reference = Reference Wetland)
+
+<br> 
+
+1. Fit an N-mixture model that assumes abundance is a function of wetland size and type, and detection probability is a function of sky and time (5 points).
+```{r}
+
+library(unmarked)
+
+y <- read.csv("sosp_nmix.csv") # song sparrow count
+y_mat <- as.matrix(y) 
+
+p_covs <- read.csv("p_covs_nmix.csv") # detection covariates time and sky
+det_covs <- list(
+  time = data.frame(p_covs[, c("time.1", "time.2")]),
+  sky = data.frame(sky.1 = factor(p_covs$sky.1),
+                   sky.2 = factor(p_covs$sky.2))  
+)
+
+site_covs <- read.csv("n_covs_nmix.csv") # site covariates: wetland size and wetland type
+site_covs$type <- factor(site_covs$type)
+
+
+nmix_data <- unmarkedFramePCount(y = y_mat,
+                                    siteCovs = site_covs, 
+                                    obsCovs = det_covs) 
+
+# model 
+fit <- pcount(formula = ~ sky + time ~ size + type, data = nmix_data, K = 100)
+summary(fit)
+
+```
+<br>
+
+2. Write a function that calculates the sum of squared Pearson residuals from a fitted model. where yi is your observed count; λˆi is expected abundance at site i; and pˆij is estimated detection probability at site i during replicate survey j. Note that both λˆi and pˆij can be obtained using the predict() function (10 points).(the test stat should be 1025.863)
+```{r}
+## predicting abundance
+predict_abun <- predict(object = fit, type = 'state') # 183 entries
+
+## predicting detection 
+predict_det <- predict(object = fit, type = 'det')  # 366 (138*2 because 183 entries, 2 observers)
+
+## but how do we know which belongs to which? 
+fitted(fit)[1]; predict_abun$Predicted[1] * predict_det$Predicted[1]
+fitted(fit)[184]; predict_abun$Predicted[2] * predict_det$Predicted[2]
+# it's going by column, not by row 
+
+## in order to match abundance with detection, we also need 366 entries, so we have to double the abundance
+
+
+####### Now, we are ready for our function! ######
+
+sspr <- function(fit){ # fit is fitted model
+# parboot needs this in the function for it to run
+  y_mat <- as.matrix(y)  
+  obs_row1 <- y_mat[,1] 
+  obs_row2 <- y_mat[,2]
+  obs1 <- as.matrix(c(rbind(obs_row1, obs_row2)))
+  predict_abun <- predict(object = fit, type = 'state') 
+  predict_det <- predict(object = fit, type = 'det')
+  predict_abun2 <- as.matrix(c(rbind(predict_abun$Predicted, predict_abun$Predict)))
+
+# these variables go directly into our test statistic formula
+  observed <- obs1   # observed matrix
+  ex_abun <- predict_abun2 # expected abundance
+  ex_det <- predict_det$Predicted # expected detection   
+
+# test statistic formula
+        ts <- (observed - (ex_abun*ex_det)) ^ 2 /    # test statistic
+          ((ex_abun*ex_det) * (1 - ex_det))
+          return(sum(ts))
+}
+
+sspr(fit)
+
+```
+
+<br>
+
+3. Use the parboot() function in R to simulate the distribution of this test statistic under the assumption that your fitted model is the data-generating model. Simulate 1000 values of the test statistic. Note that this may take several minutes (5 points).
+```{r}
+
+pb <- parboot(fit, sspr, nsim = 1000, report =1)
+
+```
+
+<br>
+
+4. Plot the distribution of the simulated test statistic. Include in this plot the value of your test statistic calculated from your fitted model. What is the null hypothesis you are testing when conducting model checking? Do you reject or fail to reject this null hypothesis? What are the implications for how well you model fits the data (5 points)? 
+```{r}
+
+x <- sspr(fit) # just make this an object for points function
+
+plot(pb, main="Test Statistic and Similuated Test Statistic")
+points(x) # test statistic calculated from fitted model
+
+# p-value
+sum(pb@t.star[, 1] > sspr(fit)) / 1000
+
+
+```
+The null hypothesis that we are testing is if the fitted model is the same as the data-generating model. Based on our p-value from the observed test statistic and the simulated test statistics, 0.686, we fail to reject this null hypothesis. In other words, our fitted model is not different from the data-generating model. This implies that our model fits the data well. 
+
