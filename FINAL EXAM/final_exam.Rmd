@@ -1,0 +1,271 @@
+---
+title: "FINAL EXAM"
+author: "Krista Noe"
+date: "Cinco de Mayo 2021"
+output: html_document
+---
+
+Included with this exam is an example occupancy modeling dataset: 
+detect.csv: detection / non-detection data
+sitecovs.csv: site-level covariates (1 covariate per column)
+obscovs1.csv: observation-level covariates
+obscovs2.csv: observation-level covariates
+
+<br>
+
+1. Describe a sampling procedure that may have given rise to this dataset.
+*Make 100 site visits. At each site conduct 3 (J =3) replicate surveys (either at different times, or with different people). At each of the site, write a 0 if an individual was not detected, and 1 if it was detected. Site covariates x1 and x2 should also be recorded at each site, however this is only once, as we are assuming that these variables will not change over our survey period. Unlike with site covariates, at each site visit AND in each of the replicate surveys, record detection covariates (Therefore, each site should also 3 detection covaraites for both covaraite 1 and covariate 2.) *
+
+```{r}
+det_data <- read.csv("detect.csv"); str(det_data)
+site_cov <- read.csv("sitecovs.csv"); str(site_cov)
+obs_cov1 <- read.csv("obscovs1.csv"); str(obs_cov1)
+obs_cov2 <- read.csv("obscovs2.csv"); str(obs_cov2)
+
+```
+
+<br> 
+
+2. Import data and fit an occupancy model that assumes detection probability is an additive function of
+obscovs1 and obscovs2; and that occupancy probability is an additive function of x1 and x2.
+
+```{r}
+
+library(unmarked)
+
+y <- as.matrix(det_data) # observed counts
+# site covariates: x1 and x2, both are numeric
+                 
+det_covs <- list(     # detection covariates obs1 and obs2
+  observation_cov_1 = obs_cov1,
+  observation_cov_2 = obs_cov2)
+
+occu_data <- unmarkedFrameOccu(y = y,
+                                  siteCovs = site_cov, 
+                                  obsCovs = det_covs) 
+
+# model 
+fit <- occu(formula = ~ observation_cov_1 + observation_cov_2 ~ x1 + x2, data = occu_data) # K will automatically be set
+summary(fit)
+
+```
+
+<br>
+
+3. Use contrasts to determine if occupancy probability different when x1 = 2 vs. when x1 = -2?
+```{r}
+
+# occupancy so the first model (out of the two outputs)
+
+x <- matrix(
+  c(0, 4, 0), # -2 and 2 different by 4 
+  nrow = 1, byrow = T
+  )
+
+lin_com <- linearComb(obj = fit, coefficients = x, type = 'state')
+
+# Wald test
+w <- coef(lin_com) / SE(lin_com)
+
+# pvalues
+2 * pnorm(-1 * abs(w))
+
+## 0.19; therefore we fail to reject that occupancy probability is different when x1 = 2 vs when x1 = -2. 
+
+```
+
+<br>
+
+4. Use model selection to compare the following 4 models. Which model is the "top" model? How do you
+know?
+(a) ∼ obscovs1 + obscovs2 ∼ x1 + x2
+(b) ∼ obscovs1 + obscovs2 ∼ x1
+(c) ∼ obscovs1 + obscovs2 ∼ x2
+(d) ∼ obscovs1 + obscovs2 ∼ 1
+
+```{r}
+
+# ∼ obscovs1 + obscovs2 ∼ x1 + x2
+fit1 <- occu(~ observation_cov_1 + observation_cov_2 ~ x1 + x2, data = occu_data) 
+
+# ∼ obscovs1 + obscovs2 ∼ x1
+fit2 <- occu(~ observation_cov_1 + observation_cov_2 ~ x1, data = occu_data)
+
+# ∼ obscovs1 + obscovs2 ∼ x2
+fit3 <- occu(~ observation_cov_1 + observation_cov_2 ~ x2, data = occu_data)
+
+# ~ obscovs1 + obscovs2 ∼ 1
+fit4 <- occu(~ observation_cov_1 + observation_cov_2 ~ 1, data = occu_data)
+
+
+# choosing a top model 
+library(AICcmodavg)
+
+cand.set <- list(
+  m1 = fit1, m2 = fit2, m3 = fit3, m4 = fit4
+)
+
+mods <- aictab(cand.set = cand.set, second.ord = F)
+head(mods) 
+
+## Model 3 is the best model because it has the lowest AIC value. However, there is model selection uncertainty because delta AIC between the top model and the second best model is only 0.29, which is less than 2. 
+
+```
+
+<br>
+
+5. Obtain model-averaged estimates of x1. What conclusions do you draw regarding this variable?
+
+```{r}
+
+## model-averaged estimates of x1 ##
+
+modelavg_x1 <- modavgShrink(
+              cand.set = cand.set, 
+              parm = "x1", 
+              second.ord = F, 
+              parm.type = "psi")
+
+# Confidence intervals overlap 0 (-0.35, 0.69), therefore x1 does not have a non-zero influence on occupancy probability
+
+```
+
+<br>
+
+6. Plot model-averaged predictions of how detection probability changes across the observed range of obscovs2.
+
+```{r}
+
+## simulate new data frame
+newdat <- data.frame(
+            observation_cov_1 = rep(0, length.out = 100), 
+            observation_cov_2 = seq(from = -3.433526, to = 3.113664, length.out = 100)
+)
+
+
+avg_prd_obscov2 <- modavgPred(cand.set = cand.set,
+                      newdata = newdat,
+                      second.ord = T, 
+                      parm.type = "detect"  #b/c dealing with the detection model
+                     )
+
+
+## plot 
+plot(x = newdat$observation_cov_2, y = avg_prd_obscov2$mod.avg.pred, type = "l",
+    ylim = c(min(avg_prd_obscov2$lower.CL), max(avg_prd_obscov2$upper.CL)))
+lines(x = newdat$observation_cov_2, y = avg_prd_obscov2$lower.CL, lty = 2)
+lines(x = newdat$observation_cov_2, y = avg_prd_obscov2$upper.CL, lty = 2)
+
+```
+
+
+<br>
+
+7. Evaluate the fit of the top model using the sum of squared Pearson’s residuals as a test statistic. A function for evaluating this test statistic is provided at the bottom of the exam
+
+```{r}
+
+chisq <- function(fit3){ # mod is fitted model
+obs <- getY(fit3@data) # observed
+ex <- fitted(fit3) # expected
+ts <- (ex - obs) ^ 2 / # chi-square statistic
+(ex * (1 - ex))
+return(sum(ts))
+}
+
+chisq(fit); ## 299.4566 is the test statistic
+
+sims <- parboot(object = fit3, statistic = chisq, nsim = 1000) ## simulated data
+
+sum(sims@t.star[, 1] > chisq(fit3)) / 1000   ## 0.281; the fit of the top model is not statistically different than the data generated using the parboot function
+
+```
+
+<br>
+
+
+## Other questions
+
+8. What is the closure assumption? What are the consequences of violating the closure assumption? Tell me why violating the closure assumption results in these consequences.
+
+```{r}
+
+## The closure assumption is that a species is present or absent at a site, and then this estimate is corrected for imperfect detection. Furthermore, if a species is detected at one 1 survey at a site, then we assume that it was present and available for detection at all surveys. It is also not at the individual level, but at the species level. We can try to avoid violating the closure assumption by conducting replicate surveys that are close in time to each other. 
+ 
+## The consequences of violating closure are that detection probability is UNDERESTIMATED, and occupancy probability is OVERESTIMATED. 
+
+## This is because our true conditional detection probability is closer to the times that the species were present or absent while closure was not violated. I.e. if we had 3 replicate surveys, but only the first two were within the closure assumption, but closure was violated for the third replicate, then our true detection probability would be closer to 1/2, instead of 1/3, when it is 1/2 then detection proability is 0.75, but when it is 1/3, then detection proability is 0.71; therefore our detection probability is underestimated. 
+
+
+```
+
+<br> 
+
+9. Assume you have variable p that is bounded between 0 and 1. Further, assume p = 0.25. What link
+function would you use to transform p to the real number line? What is the analogous vale of p = 0.25
+on the real number line?
+
+```{r}
+## You could use the plogis function to transform p to the real number line. The analogus value of p = 0.25 is 0.56.
+## The inverse logit function maps a number that is on the real number line to the (0,1) interval. 
+
+plogis(0.25)
+```
+
+
+<br>
+
+10. Assume you have a random variable that can only obtain values of 0, 1, 2, ..., ∞. What probability
+distribution might you use to model such data? What is (are) the parameter(s) of this probability
+distribution? What link function might you use if you wanted to model that parameter as a linear
+function of variables?
+```{r}
+## You would use Poisson distribution. (not binomial because that is countable and goes to N, while this goes to infinity)
+## the parameters for this porbability distribution are lambda (lambda > 0, represents the rate or intensity of events)
+## if you wanted to model a parameter as a linear function of variables, the link function you would want to use is log-link.
+
+```
+
+<br>
+
+11. Discuss null hypothesis significance testing within the context of model checking. Be sure to include
+the following phrases in your description:
+• assumptions of the null hypothesis
+• test statistic
+• p-value
+• reject or fail to reject the null hypothesis
+```{r}
+
+## The the null hypothesis in terms of model checking is that the data distribution from a model that used random data will not be different from our the distribution of our observed quantities. In other words, we are comparing summaries of data with quantities that would be expected if our porposed model was the data generating model. 
+
+## Our test statistic is the numeric summary of our data that is to be compared to a distibtion; in the case of model checking, the distribution we are comapring our test statistic to is simulated. The test statistic typically used for this is the sum of pearsons residuals. The test statistic should fall around the middle of the distribution in order to have faith that the data generating process is a reasonable representation.
+
+## The p-value is the probability of observing a more extreme value of the test statistic under the assumptions of the null hypothesis. If the p-value is <0.05, we can reject the null hypothesis, meaning that there is not enough evidence to conclude there is no difference between the data generated and the data observed. Graphically, the test statistic would be placed out of the expected distribution. You would fail to reject the null hypothesis if the p-value was greater than 0.05, meaning that the data generated and the data observed are not statistically different. Graphically, we would likely see the test statistic to fall within the range of the expected distribution. 
+
+```
+
+<br>
+
+### For questions 12 and 13, assume the following linear model (6 points each):
+y = β0 + β1x1 + β2x2 + β3x3 + β4x2x3
+
+where x1 is categorical and is coded = 1 if variable x1 obtains level “b”, and is coded = 0 if x1 obtains level “a”; and x2 and x3 are both continuous random variables.
+
+<br>
+
+12. interpret the coefficient β1
+
+```{r}
+## β1 is the difference between levels "a" and "b". 
+
+```
+
+<br>
+
+13. how does the response variable change in response to a 1-unit change in x2?
+```{r}
+
+## The response variable changes β2 units + β4 units (when x3 = 0) for every 1-unit increase in x2.
+
+```
+
